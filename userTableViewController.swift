@@ -1,10 +1,3 @@
-//
-//  userTableViewController.swift
-//  BeirutTrackingApp
-//
-//  Created by SPEAKFLUENCE GLOBAL on 14/08/2020.
-//  Copyright © 2020 Maya Bridgman. All rights reserved.
-//
 
 import UIKit
 
