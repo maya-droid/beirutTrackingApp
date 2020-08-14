@@ -1,29 +1,21 @@
-//
-//  FeedVC.swift
-//  BeirutTrackingApp
-//
-//  Created by SPEAKFLUENCE GLOBAL on 13/08/2020.
-//  Copyright © 2020 Maya Bridgman. All rights reserved.
-//
-
-
 import UIKit
 import Firebase
 import FirebaseDatabase
 import SwiftKeychainWrapper
+import FirebaseAuth
 
 class FeedVC: UITableViewController {
     
     var currentUserImageUrl: String!
-    var posts = [Post]()
+    var posts = [postStruct]()
     var selectedPost: Post!
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         getUsersData()
         getPosts()
         // Do any additional setup after loading the view.
-        
+        tableView.register(PostCell.self, forCellReuseIdentifier: "PostCell")
     }
 
     override func didReceiveMemoryWarning() {
@@ -33,26 +25,32 @@ class FeedVC: UITableViewController {
     
     
     func getUsersData(){
-      let uid = KeychainWrapper.standard.string(forKey: "uid")
-        Database.database().reference().child("users").child(uid!).observeSingleEvent(of: .value) { (snapshot) in
+
+        guard let userID = Auth.auth().currentUser?.uid else { return }
+        Database.database().reference().child("users").child(userID).observeSingleEvent(of: .value) { (snapshot) in
             if let postDict = snapshot.value as? [String : AnyObject] {
-                self.currentUserImageUrl = postDict["userImg"] as! String
                 self.tableView.reloadData()
             }
         }
     }
     
+    struct postStruct {
+        let firstName : String!
+        let lastName : String!
+    }
+    
     func getPosts() {
-        Database.database().reference().child("textPosts").observeSingleEvent(of: .value) { (snapshot) in
-            guard let snapshot = snapshot.children.allObjects as? [DataSnapshot] else { return }
-            self.posts.removeAll()
-            for data in snapshot.reversed() {
-                guard let postDict = data.value as? Dictionary<String, AnyObject> else { return }
-                let post = Post(postKey: data.key, postData: postDict)
-                self.posts.append(post)
-            }
-            self.tableView.reloadData()
-        }
+        let databaseRef = Database.database().reference()
+        databaseRef.child("profiles").queryOrderedByKey().observeSingleEvent(of: .childAdded, with: {
+                    snapshot in
+                    let firstName = (snapshot.value as? NSDictionary)!["profileForename"] as? String
+                    let lastName = (snapshot.value as? NSDictionary
+                        )!["profileSurname"] as? String
+                    self.posts.append(postStruct(firstName: firstName, lastName: lastName))
+                    DispatchQueue.main.async {
+                        self.tableView.reloadData()
+                    }
+                })
     }
     
     override func numberOfSections(in tableView: UITableView) -> Int {
@@ -63,15 +61,13 @@ class FeedVC: UITableViewController {
         return posts.count
     }
     
-    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        
-        
-        guard let cell = tableView.dequeueReusableCell(withIdentifier: "postCell") as? PostCell else { return UITableViewCell() }
-        cell.configCell(post: posts[indexPath.row-1])
+   override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        guard let cell = tableView.dequeueReusableCell(withIdentifier: "PostCell") as? PostCell else { return UITableViewCell() }
+        cell.firstNameLabel?.text = posts[indexPath.row].firstName
+        print(posts[indexPath.row].firstName)
         return cell
     }
 
 
 
 }
-
